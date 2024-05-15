@@ -35,6 +35,8 @@ import { saveChat } from '@/app/actions'
 import { SpinnerMessage, UserMessage } from '@/components/stocks/message'
 import { Chat } from '@/lib/types'
 import { auth } from '@/auth'
+import { AppointmentSlots } from '@/components/appointments/appointment-slots'
+import { time } from 'console'
 
 async function confirmPurchase(symbol: string, price: number, amount: number) {
   'use server'
@@ -100,9 +102,8 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
         {
           id: nanoid(),
           role: 'system',
-          content: `[User has purchased ${amount} shares of ${symbol} at ${price}. Total cost = ${
-            amount * price
-          }]`
+          content: `[User has purchased ${amount} shares of ${symbol} at ${price}. Total cost = ${amount * price
+            }]`
         }
       ]
     })
@@ -141,20 +142,17 @@ async function submitUserMessage(content: string) {
     model: openai('gpt-3.5-turbo'),
     initial: <SpinnerMessage />,
     system: `\
-    You are a stock trading conversation bot and you can help users buy stocks, step by step.
-    You and the user can discuss stock prices and the user can adjust the amount of stocks they want to buy, or place an order, in the UI.
+    You are a appointment scheduling bot and you can help users schedule their appointments at a clinic, step by step.
+    You and the user can discuss available appointment times and the user can view appointments and select one in the UI.
     
     Messages inside [] means that it's a UI element or a user event. For example:
-    - "[Price of AAPL = 100]" means that an interface of the stock price of AAPL is shown to the user.
-    - "[User has changed the amount of AAPL to 10]" means that the user has changed the amount of AAPL to 10 in the UI.
+    - "Appoint slots available = 3]" means that an interface of three available appointments is shown to the user.
+    - "[User has selected appointment id = 4]" means that the user has selected the appointment with id number 4 in the UI.
     
-    If the user requests purchasing a stock, call \`show_stock_purchase_ui\` to show the purchase UI.
-    If the user just wants the price, call \`show_stock_price\` to show the price.
-    If you want to show trending stocks, call \`list_stocks\`.
-    If you want to show events, call \`get_events\`.
-    If the user wants to sell stock, or complete another impossible task, respond that you are a demo and cannot do that.
+    If the user requests to view open appoinements, call \`list_appointment_slots\` to show the open appointments UI.
+    If the user wants to do something unrelated to discussing the clinic or its appointments, respond that you are a demo and cannot do that.
     
-    Besides that, you can also chat with users and do some calculations if needed.`,
+    Besides that, you can also chat with users.`,
     messages: [
       ...aiState.get().messages.map((message: any) => ({
         role: message.role,
@@ -188,6 +186,50 @@ async function submitUserMessage(content: string) {
       return textNode
     },
     tools: {
+      listAppointmentSlots: {
+        description: 'List open appointment slots.',
+        parameters: z.object({
+          appointmentSlots: z.array(
+            z.object({
+              id: z.number().describe('A unique ID for this appointment'),
+              time: z
+                .string()
+                .describe('The date and time of the event, in ISO-8601 format'),
+              durationMinutes: z.number().describe('The time in minutes of the appointment'),
+              doctor: z.string().describe('The doctor available for this slot')
+            })
+          )
+        }),
+        generate: async function* ({ appointmentSlots }) {
+          yield (
+            <BotCard>
+              {/* <AppointmentsSkeleton /> */}
+              Temp skeleton for now
+            </BotCard>
+          )
+
+          await sleep(1000)
+
+          aiState.done({
+            ...aiState.get(),
+            messages: [
+              ...aiState.get().messages,
+              {
+                id: nanoid(),
+                role: 'function',
+                name: 'listAppointmentSlots',
+                content: JSON.stringify(appointmentSlots)
+              }
+            ]
+          })
+
+          return (
+            <BotCard>
+              <AppointmentSlots props={appointmentSlots} />
+            </BotCard>
+          )
+        }
+      },
       listStocks: {
         description: 'List three imaginary stocks that are trending.',
         parameters: z.object({
@@ -228,6 +270,7 @@ async function submitUserMessage(content: string) {
           )
         }
       },
+      
       showStockPrice: {
         description:
           'Get the current stock price of a given stock or currency. Use this to show the price to the user.',
@@ -461,23 +504,28 @@ export const getUIStateFromAIState = (aiState: Chat) => {
       id: `${aiState.chatId}-${index}`,
       display:
         message.role === 'function' ? (
-          message.name === 'listStocks' ? (
+          message.name === 'listAppointmentSlots' ? (
             <BotCard>
-              <Stocks props={JSON.parse(message.content)} />
+              <AppointmentSlots props={JSON.parse(message.content)} />
             </BotCard>
-          ) : message.name === 'showStockPrice' ? (
-            <BotCard>
-              <Stock props={JSON.parse(message.content)} />
-            </BotCard>
-          ) : message.name === 'showStockPurchase' ? (
-            <BotCard>
-              <Purchase props={JSON.parse(message.content)} />
-            </BotCard>
-          ) : message.name === 'getEvents' ? (
-            <BotCard>
-              <Events props={JSON.parse(message.content)} />
-            </BotCard>
-          ) : null
+          ) :
+            message.name === 'listStocks' ? (
+              <BotCard>
+                <Stocks props={JSON.parse(message.content)} />
+              </BotCard>
+            ) : message.name === 'showStockPrice' ? (
+              <BotCard>
+                <Stock props={JSON.parse(message.content)} />
+              </BotCard>
+            ) : message.name === 'showStockPurchase' ? (
+              <BotCard>
+                <Purchase props={JSON.parse(message.content)} />
+              </BotCard>
+            ) : message.name === 'getEvents' ? (
+              <BotCard>
+                <Events props={JSON.parse(message.content)} />
+              </BotCard>
+            ) : null
         ) : message.role === 'user' ? (
           <UserMessage>{message.content}</UserMessage>
         ) : (
