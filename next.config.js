@@ -9,5 +9,10 @@ module.exports = {
         pathname: '**'
       }
     ]
-  }
+  },
+  experimental: {
+    serverActions: {
+      allowedOrigins: ['localhost:3000', '*.app.github.dev'],
+    },
+  },
 }
