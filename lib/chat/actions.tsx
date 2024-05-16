@@ -38,16 +38,17 @@ import { auth } from '@/auth'
 import { AppointmentSlots } from '@/components/appointments/appointment-slots'
 import { time } from 'console'
 
-async function confirmPurchase(symbol: string, price: number, amount: number) {
+async function confirmAppointment(appointmentSlot: {id: number, time: string, durationMinutes: number, doctor: string}) {
   'use server'
 
+  const {id, time, durationMinutes, doctor} = appointmentSlot;
   const aiState = getMutableAIState<typeof AI>()
 
-  const purchasing = createStreamableUI(
+  const selecting = createStreamableUI(
     <div className="inline-flex items-start gap-1 md:items-center">
       {spinner}
       <p className="mb-2">
-        Purchasing {amount} ${symbol}...
+        Selecting appointment {id} ...
       </p>
     </div>
   )
@@ -57,30 +58,28 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
   runAsyncFnWithoutBlocking(async () => {
     await sleep(1000)
 
-    purchasing.update(
+    selecting.update(
       <div className="inline-flex items-start gap-1 md:items-center">
         {spinner}
         <p className="mb-2">
-          Purchasing {amount} ${symbol}... working on it...
+          Selecting appointment {id} ... working on it...
         </p>
       </div>
     )
 
     await sleep(1000)
 
-    purchasing.done(
+    selecting.done(
       <div>
         <p className="mb-2">
-          You have successfully purchased {amount} ${symbol}. Total cost:{' '}
-          {formatNumber(amount * price)}
+          You have successfully Selecting appointment {id}.
         </p>
       </div>
     )
 
     systemMessage.done(
       <SystemMessage>
-        You have purchased {amount} shares of {symbol} at ${price}. Total cost ={' '}
-        {formatNumber(amount * price)}.
+        You have selected appointment {id}
       </SystemMessage>
     )
 
@@ -93,24 +92,24 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
           role: 'function',
           name: 'showStockPurchase',
           content: JSON.stringify({
-            symbol,
-            price,
-            defaultAmount: amount,
+            id,
+            time,
+            durationMinutes,
+            doctor,
             status: 'completed'
           })
         },
         {
           id: nanoid(),
           role: 'system',
-          content: `[User has purchased ${amount} shares of ${symbol} at ${price}. Total cost = ${amount * price
-            }]`
+          content: `[User has selected appointment with id ${id}]`
         }
       ]
     })
   })
 
   return {
-    purchasingUI: purchasing.value,
+    selectingUI: selecting.value,
     newMessage: {
       id: nanoid(),
       display: systemMessage.value
@@ -146,8 +145,7 @@ async function submitUserMessage(content: string) {
     You and the user can discuss available appointment times and the user can view appointments and select one in the UI.
     
     Messages inside [] means that it's a UI element or a user event. For example:
-    - "Appoint slots available = 3]" means that an interface of three available appointments is shown to the user.
-    - "[User has selected appointment id = 4]" means that the user has selected the appointment with id number 4 in the UI.
+    - "[Chose appointment 4]" means that the user has chosen the appointment with id number 4 in the UI.
     
     If the user requests to view open appoinements, call \`list_appointment_slots\` to show the open appointments UI.
     If the user wants to do something unrelated to discussing the clinic or its appointments, respond that you are a demo and cannot do that.
@@ -218,7 +216,7 @@ async function submitUserMessage(content: string) {
                 id: nanoid(),
                 role: 'function',
                 name: 'listAppointmentSlots',
-                content: JSON.stringify(appointmentSlots)
+                content: `[Showing appointment slots with data: ${JSON.stringify(appointmentSlots)}]`
               }
             ]
           })
@@ -270,7 +268,7 @@ async function submitUserMessage(content: string) {
           )
         }
       },
-      
+
       showStockPrice: {
         description:
           'Get the current stock price of a given stock or currency. Use this to show the price to the user.',
@@ -448,7 +446,7 @@ export type UIState = {
 export const AI = createAI<AIState, UIState>({
   actions: {
     submitUserMessage,
-    confirmPurchase
+    confirmAppointment
   },
   initialUIState: [],
   initialAIState: { chatId: nanoid(), messages: [] },
