@@ -19,15 +19,15 @@ export function AppointmentSlots({ props: appointmentSlots }: { props: Appointme
 
     return (
         <div>
-            <div className="flex flex-row gap-2 overflow-y-scroll text-sm sm:flex-col">
-                {appointmentSlots.map(appointmentSlot => (
-                    selectingUI ? (<div className="mt-4 text-zinc-200">{selectingUI}</div>) :
+            {selectingUI ? (<div className="mt-4 text-zinc-200">{selectingUI}</div>) :
+                (<div className="flex flex-row gap-2 overflow-y-scroll text-sm sm:flex-col">
+                    {appointmentSlots.map(appointmentSlot => (
                         <button
                             key={appointmentSlot.id}
                             className="flex cursor-pointer flex-row gap-2 rounded-lg bg-zinc-800 text-left hover:bg-zinc-700 sm:w-85"
                             onClick={async () => {
                                 const response = await confirmAppointment(appointmentSlot)
-                                setSelectingUI(response.purchasingUI)
+                                setSelectingUI(response.selectingUI)
 
                                 // Insert a new system message to the UI.
                                 setMessages((currentMessages: any) => [
@@ -48,8 +48,8 @@ export function AppointmentSlots({ props: appointmentSlots }: { props: Appointme
                                 Doctor: {appointmentSlot.doctor}
                             </div>
                         </button>
-                ))}
-            </div>
+                    ))}
+                </div>)}
         </div>
     )
 }
