@@ -207,7 +207,7 @@ async function submitUserMessage(content: string) {
                 id: nanoid(),
                 role: 'function',
                 name: 'listAppointmentSlots',
-                content: `[Showing appointment slots with data: ${JSON.stringify(appointmentSlots)}]`
+                content: JSON.stringify(appointmentSlots)
               }
             ]
           })
@@ -307,6 +307,11 @@ export const getUIStateFromAIState = (aiState: Chat) => {
           message.name === 'listAppointmentSlots' ? (
             <BotCard>
               <AppointmentSlots props={JSON.parse(message.content)} />
+            </BotCard>
+          ) : 
+          message.name === 'showSelectedAppointment' ? (
+            <BotCard>
+              {message.content}
             </BotCard>
           ) : null
         ) : message.role === 'user' ? (
